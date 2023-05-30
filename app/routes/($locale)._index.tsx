@@ -6,6 +6,7 @@ import type {
   ProductConnection,
 } from '@shopify/hydrogen/storefront-api-types';
 import {AnalyticsPageType} from '@shopify/hydrogen';
+import {sql} from '@vercel/postgres';
 
 import {ProductSwimlane, FeaturedCollections, Hero} from '~/components';
 import {MEDIA_FRAGMENT, PRODUCT_CARD_FRAGMENT} from '~/data/fragments';
@@ -26,21 +27,26 @@ export const headers = routeHeaders;
 
 export async function loader({params, context}: LoaderArgs) {
   const {language, country} = context.storefront.i18n;
-  // ...Tu lógica para cargar datos aquí...
-  const data = {key: 'value'}; // Este es el objeto que será accesible en useLoaderData() en el componente.
-  console.log('hidden');
+  const data = {key: 'value'};
   const str = 'Hello, world!';
-  // @ts-ignore
-  const buffer = Buffer.from(str, 'utf8');
-  const base64Str = buffer.toString('base64');
-  //   const result = await sql`SELECT * FROM products`;
+  let rows = null;
+  let base64Str;
 
-  //   if (result.rowCount === 0) {
-  //     throw new Error('No data found');
-  //   }
+  // If we're in a Node.js environment
+  if (typeof process !== 'undefined') {
+    rows = await sql`SELECT * from products`;
 
-  //   // Assuming the column name is 'blob_column'
-  //   const buffer: Buffer = result.rows[0].products;
+    // @ts-ignore
+    const buffer = Buffer.from(rows, 'utf8');
+    base64Str = buffer.toString('base64');
+  }
+
+  // If we're in a browser environment
+  else {
+    base64Str = btoa(str);
+  }
+
+  rows = base64Str;
 
   if (
     params.locale &&
@@ -62,6 +68,7 @@ export async function loader({params, context}: LoaderArgs) {
 
   return defer(
     {
+      base64Str,
       shop,
       primaryHero: hero,
       // These different queries are separated to illustrate how 3rd party content
@@ -122,6 +129,7 @@ export async function loader({params, context}: LoaderArgs) {
 
 export default function Homepage() {
   const {
+    base64Str,
     primaryHero,
     secondaryHero,
     tertiaryHero,
@@ -133,6 +141,7 @@ export default function Homepage() {
   const skeletons = getHeroPlaceholder([{}, {}, {}]);
   return (
     <>
+      <div>{base64Str}</div>
       <ReviewProducts />
       {primaryHero && (
         <Hero {...primaryHero} height="full" top loading="eager" />
